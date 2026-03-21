@@ -41,18 +41,22 @@ class DomainHunter(commands.Cog):
     async def send_webhook_alert(self, webhook_url: str, subdomain_info: str, main: str):
         try:
             client = self.bot.http._HTTPClient__session
-            async with discord.Webhook.from_url(webhook_url, session=client) as webhook:
-                embed = discord.Embed(
-                    title="🔥 New Subdomain Found",
-                    description=f"Main Domain: **{main}**",
-                    color=discord.Color.red(), 
-                    timestamp=datetime.now(timezone.utc)
+            webhook = discord.Webhook.from_url(webhook_url, session=client)
+            embed = discord.Embed(
+                title="🔥 New Subdomain Found",
+                description=f"Main Domain: **{main}**",
+                color=discord.Color.red(), 
+                timestamp=datetime.now(timezone.utc)
                 )
-                embed.add_field(name="Result", value=f"```{subdomain_info}```")
-                embed.set_thumbnail(url="https://i.pinimg.com/originals/86/b1/58/86b15845e3604452cb8539470eea3641.gif")
-                embed.set_footer(text="Automated Monitor")
-                embed.set_author(name="Hellsing", icon_url="https://i.pinimg.com/originals/14/c0/1d/14c01d070ef4669ac8d9aca1f4aa9de1.gif")
-                await webhook.send(embed=embed)
+            embed.add_field(name="Result", value=f"```{subdomain_info}```")
+            embed.set_thumbnail(url="https://i.pinimg.com/originals/8c/46/0c/8c460cef26fd2ca92831935d38db95fa.gif")
+            embed.set_footer(text="Automated Monitor")
+            embed.set_author(name="The WatchD0g", icon_url="https://i.pinimg.com/originals/14/c0/1d/14c01d070ef4669ac8d9aca1f4aa9de1.gif")
+            await webhook.send(embed=embed,
+            username="The WatchD0g",
+            avatar_url="https://i.pinimg.com/736x/c8/55/c9/c855c9672d6cd0b33209e77617e3dc78.jpg"
+            )
+
         except Exception as e:
             logger.error(f"Webhook transmission failed for {main}: {e}")
 
@@ -71,16 +75,20 @@ class DomainHunter(commands.Cog):
 
         try:
             client = self.bot.http._HTTPClient__session
-            async with discord.Webhook.from_url(webhook_url, session=client) as webhook:
-                embed = discord.Embed(
-                    title="♻️ Rescan Detection",
-                    description=f"Main Domain: **{main}**\n**Alive Subdomains:**\n```\n{subdomains}\n```",
-                    color=discord.Color.gold(), timestamp=datetime.now(timezone.utc)
+            webhook = discord.Webhook.from_url(webhook_url, session=client)
+            embed = discord.Embed(
+                title="♻️ Rescan Detection",
+                description=f"Main Domain: **{main}**\n**Alive Subdomains:**\n```\n{subdomains}\n```",
+                color=discord.Color.gold(), timestamp=datetime.now(timezone.utc)
                 )
-                embed.set_footer(text="Automated Monitor")
-                embed.set_thumbnail(url="https://i.pinimg.com/originals/20/dc/ae/20dcae4d034b577df3e5e39daaf9cc03.gif")
-                embed.set_author(name="Hellsing", icon_url="https://i.pinimg.com/originals/14/c0/1d/14c01d070ef4669ac8d9aca1f4aa9de1.gif")
-                await webhook.send(embed=embed)
+            embed.set_footer(text="Automated Monitor")
+            embed.set_thumbnail(url="https://i.pinimg.com/originals/20/dc/ae/20dcae4d034b577df3e5e39daaf9cc03.gif")
+            embed.set_author(name="The W1tch", icon_url="https://i.pinimg.com/originals/14/c0/1d/14c01d070ef4669ac8d9aca1f4aa9de1.gif")
+            await webhook.send(embed=embed,
+            username="The W1tch",
+            avatar_url="https://i.pinimg.com/736x/0e/fc/86/0efc86b4084ad0110276610c66f16e59.jpg"
+            )
+
         except Exception as e:
             logger.error(f"Webhook transmission failed for {main}: {e}")
 
@@ -190,6 +198,15 @@ class DomainHunter(commands.Cog):
             return await ctx.send(f"Target {domain} is already being monitored.")
         if len(domain) == 0:
             return await ctx.send("Domain cannot be empty.")
+
+        # Check if domain already exists in the database to prevent duplicate channels
+        conn = sqlite3.connect(DB_FILE, timeout=10)
+        cursor: sqlite3.Cursor = conn.cursor()
+        cursor.execute("SELECT domain FROM main_domains WHERE domain = ?", (domain,))
+        
+        if cursor.fetchone() is not None:
+            conn.close()
+            return await ctx.send("Target already exists in the database.")
 
         await ctx.message.add_reaction("⚙️")
         logger.info(f" Deploying worker for {domain} \nUser: {ctx.author.name}\nServer: {ctx.guild.name}\nChannel: {ctx.channel.name}\n")

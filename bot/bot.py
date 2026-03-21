@@ -9,7 +9,7 @@ from pretty_help import AppMenu, PrettyHelp, AppNav
 
 load_dotenv(os.path.join(os.getcwd(), ".env"))
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("HELLSING-OPS")
 
 if DISCORD_TOKEN is None:
