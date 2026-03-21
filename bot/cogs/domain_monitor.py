@@ -146,15 +146,21 @@ class DomainHunter(commands.Cog):
             logger.info(f"Worker started for: {main}")
 
             while True:
-                line = await process.stdout.readline()
-                if not line: break
+                try:
+                    line = await asyncio.wait_for(process.stdout.readline(), timeout=10)
+                    if not line: break
                 
-                domain = line.decode().strip()
-                if domain: batch.append(domain)
+                    domain = line.decode().strip()
+                    if domain: batch.append(domain)
 
-                if len(batch) >= BATCH_SIZE:
-                    await self.process_batch(batch, main, webhook_url)
-                    batch.clear()
+                    if len(batch) >= BATCH_SIZE:
+                        await self.process_batch(batch, main, webhook_url)
+                        batch.clear()
+
+                except asyncio.TimeoutError:
+                    if batch:
+                        await self.process_batch(batch, main, webhook_url)
+                        batch.clear()
 
             if batch:
                 await self.process_batch(batch, main, webhook_url)
