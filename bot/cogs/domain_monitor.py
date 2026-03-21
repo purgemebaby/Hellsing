@@ -26,16 +26,13 @@ class DomainHunter(commands.Cog):
         self.active_workers = {} # Concurrent tasks
         self.rescanner.start() # Start Rescanner Loop
 
-    @rescanner.before_loop
-    async def before_rescanner(self): # Wait until bot is ready to start loop
-        await self.bot.wait_until_ready()
-
     def cog_unload(self):
         """Terminate workers and rescanner loop when the module is unloaded."""
         self.rescanner.cancel()
+        logger.critical("Rescanner loop cancelled.")
         for domain, process in self.active_workers.items():
             process.terminate()
-            logger.info(f"Worker terminated: {domain}")
+            logger.critical(f"Worker terminated: {domain}")
 
 
 
@@ -185,8 +182,11 @@ class DomainHunter(commands.Cog):
             return await ctx.send("5 active workers reached. Close an active worker first.")
         if domain in self.active_workers:
             return await ctx.send(f"Target {domain} is already being monitored.")
+        if len(domain) == 0:
+            return await ctx.send("Domain cannot be empty.")
 
         await ctx.message.add_reaction("⚙️")
+        logger.info(f" Deploying worker for {domain} \nUser: {ctx.author.name}\nServer: {ctx.guild.name}\nChannel: {ctx.channel.name}\n")
 
         # Create category, channel and webhook
         try:
@@ -228,6 +228,7 @@ class DomainHunter(commands.Cog):
         domains_data = cursor.fetchall()
 
         if not domains_data: 
+            logger.warning("No domains found in the DB.")
             conn.close()
             return
 
@@ -271,9 +272,11 @@ class DomainHunter(commands.Cog):
                 webhook_url = webhooks.get(domain)
                 if webhook_url:
                     await self.send_rescan_webhook_alert(webhook_url, valid_subdomains, domain)
+        logger.info("Rescanner cycle completed.")
 
-
-
+    @rescanner.before_loop
+    async def before_rescanner(self): # Wait until bot is ready to start loop
+        await self.bot.wait_until_ready()
 
 async def setup(bot):
     await bot.add_cog(DomainHunter(bot))

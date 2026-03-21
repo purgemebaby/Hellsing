@@ -7,9 +7,9 @@ from discord import Intents
 from dotenv import load_dotenv
 from pretty_help import AppMenu, PrettyHelp, AppNav
 
-load_dotenv()
-logging.basicConfig(level=logging.INFO)
+load_dotenv(os.path.join(os.getcwd(), ".env"))
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("HELLSING-OPS")
 
 if DISCORD_TOKEN is None:
@@ -23,7 +23,7 @@ intents.message_content = True
 intents.guilds = True
 permissions = discord.Permissions(2260992654961904)
 
-bot = commands.Bot(command_prefix="!",
+bot = commands.Bot(command_prefix="$",
                    intents=intents,
                    permissions=permissions,
                    case_insensitive=True,
@@ -58,7 +58,7 @@ bot.help_command = PrettyHelp(menu=menu, ending_note=ending_note,
 
 
 cogs = [
-    "cogs.general_commands"
+    "cogs.general_commands",
     "cogs.domain_monitor"
 ]
 
