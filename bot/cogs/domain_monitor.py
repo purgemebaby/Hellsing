@@ -24,15 +24,15 @@ class DomainHunter(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.active_workers = {} # Concurrent tasks
-        self.rescanner.start() # Start tasks exec loop
+        self.rescanner.start() # Start Rescanner Loop
 
     @rescanner.before_loop
-    async def before_rescanner(self):
+    async def before_rescanner(self): # Wait until bot is ready to start loop
         await self.bot.wait_until_ready()
 
     def cog_unload(self):
-        """Protocol to terminate the module when it is unloaded."""
-        self.rescanner.cancel() # Stop tasks exec loop
+        """Terminate workers and rescanner loop when the module is unloaded."""
+        self.rescanner.cancel()
         for domain, process in self.active_workers.items():
             process.terminate()
             logger.info(f"Worker terminated: {domain}")
@@ -52,7 +52,9 @@ class DomainHunter(commands.Cog):
                     timestamp=datetime.now(timezone.utc)
                 )
                 embed.add_field(name="Result", value=f"```{subdomain_info}```")
+                embed.set_thumbnail(url="https://i.pinimg.com/originals/86/b1/58/86b15845e3604452cb8539470eea3641.gif")
                 embed.set_footer(text="Automated Monitor")
+                embed.set_author(name="Hellsing", icon_url="https://i.pinimg.com/originals/14/c0/1d/14c01d070ef4669ac8d9aca1f4aa9de1.gif")
                 await webhook.send(embed=embed)
         except Exception as e:
             logger.error(f"Webhook transmission failed for {main}: {e}")
@@ -79,14 +81,16 @@ class DomainHunter(commands.Cog):
                     color=discord.Color.gold(), timestamp=datetime.now(timezone.utc)
                 )
                 embed.set_footer(text="Automated Monitor")
+                embed.set_thumbnail(url="https://i.pinimg.com/originals/20/dc/ae/20dcae4d034b577df3e5e39daaf9cc03.gif")
+                embed.set_author(name="Hellsing", icon_url="https://i.pinimg.com/originals/14/c0/1d/14c01d070ef4669ac8d9aca1f4aa9de1.gif")
                 await webhook.send(embed=embed)
         except Exception as e:
-            logger.error(f"Webhook transmission failed for {target}: {e}")
+            logger.error(f"Webhook transmission failed for {main}: {e}")
 
 
 
 
-# HTTPX processing and Gungnir tasks
+# HTTPX processing and Gungnir tasks creation 
     async def process_batch(self, batch: list, main: str, webhook_url: str):
         """Processes batches of subdomains, updates DB and notifies."""
         if not batch: return
@@ -119,7 +123,7 @@ class DomainHunter(commands.Cog):
                         conn.commit()
                         await self.send_webhook_alert(webhook_url, line, main)
                     except sqlite3.IntegrityError:
-                        logger.warning(f"Subdomain already known: {subdomain}")
+                        continue
                 conn.close()
 
         except Exception as e:
@@ -161,10 +165,13 @@ class DomainHunter(commands.Cog):
         except asyncio.CancelledError:
             logger.info(f"Worker cancelled for {main}")
         finally:
+            # Terminate workers
             if 'process' in locals() and process.returncode is None:
                 process.terminate()
+
             if main in self.active_workers:
                 del self.active_workers[main]
+
             if os.path.exists(tmp_root_file):
                 os.remove(tmp_root_file)
 
@@ -218,14 +225,14 @@ class DomainHunter(commands.Cog):
         conn = sqlite3.connect(DB_FILE, timeout=10)
         cursor: sqlite3.Cursor = conn.cursor()
         cursor.execute("SELECT domain, webhook_url FROM main_domains")
-        targets_data = cursor.fetchall()
+        domains_data = cursor.fetchall()
 
-        if not targets_data: 
+        if not domains_data: 
             conn.close()
             return
 
-        webhooks: dict[str, str] = {row[0]: row[1] for row in targets_data} # {domain: webhook_url}
-        alive_by_target = {domain: [] for domain in webhooks.keys()} # {domain: [subdomains]}
+        webhooks: dict[str, str] = {row[0]: row[1] for row in domains_data} # {domain: webhook_url}
+        alive_by_domain = {domain: [] for domain in webhooks.keys()} # {domain: [subdomains]}
 
         # SQLite fetch subdomains
         cursor.execute("SELECT subdomain, domain FROM subdomains")
@@ -251,19 +258,19 @@ class DomainHunter(commands.Cog):
                             continue
                         subdomain = line.split()[0].replace("https://", "").replace("http://", "")
 
-                        target = batch_map.get(subdomain) # {Subdomain: Target}, get target from subdomain
-                        if target and target in alive_by_target:
-                            alive_by_target[target].append(line)
+                        domain = batch_map.get(subdomain) # {Subdomain: Target}, get target from subdomain
+                        if domain and domain in alive_by_domain:
+                            alive_by_domain[domain].append(line)
             except Exception as e:
                 logger.error(f"Error in rescanner execution: {e}")
         conn.close()
 
         # Send data via webhook
-        for target, valid_subdomains in alive_by_target.items():
+        for domain, valid_subdomains in alive_by_domain.items():
             if valid_subdomains:
-                webhook_url = webhooks.get(target)
+                webhook_url = webhooks.get(domain)
                 if webhook_url:
-                    await self.send_rescan_webhook_alert(webhook_url, valid_subdomains, target)
+                    await self.send_rescan_webhook_alert(webhook_url, valid_subdomains, domain)
 
 
 
