@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("HELLSING-OPS")
 
 if DISCORD_TOKEN is None:
-    logger.error(" No Discord token found, bot will not start. Please create a .env file with the DISCORD_TOKEN variable.")
+    logger.error("No Discord token found, bot will not start. Please create a .env file with the DISCORD_TOKEN variable.")
 
 
 # Permissions for the bot
